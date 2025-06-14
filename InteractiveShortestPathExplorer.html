@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Shortest Path Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Soothing Neutrals" - A palette of warm grays, beige, and a gentle teal for accents. -->
+    <!-- Application Structure Plan: A top-down narrative structure guides the user. It starts with a high-level introduction, moves to an interactive graph visualization (the core element), and then offers deeper dives into the linear programming formulation and the underlying algorithm via collapsible sections. This structure allows users to engage at their preferred level of depth, from a simple visual understanding to a detailed technical review. The key interaction is selecting source/sink nodes and seeing the path calculated and visualized in real-time, making the abstract concept tangible. -->
+    <!-- Visualization & Content Choices: The core of the report is the graph and its shortest path. This is best represented by a direct visual diagram. Goal: Organize/Relationships. Method: HTML divs styled with Tailwind CSS to represent nodes and edges, positioned relatively. Interaction: User selects source/sink, JS calculates the path using Dijkstra's algorithm (more suitable for client-side interaction than a full LP solver), and dynamically applies CSS classes to highlight the path and nodes. The LP formulation is presented as static, formatted text within a collapsible section (Goal: Inform) to provide context without cluttering the main view. This design prioritizes interactive learning while remaining faithful to the source report's key information. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .node {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            font-weight: 700;
+            color: #4A5568; /* gray-700 */
+            background-color: #E2E8F0; /* gray-300 */
+            border: 3px solid #CBD5E0; /* gray-400 */
+            transition: all 0.3s ease-in-out;
+            position: absolute;
+            z-index: 10;
+        }
+        .node.in-path {
+            background-color: #A7F3D0; /* green-200 */
+            border-color: #34D399; /* green-400 */
+            color: #065F46; /* green-800 */
+            transform: scale(1.1);
+        }
+        .edge {
+            position: absolute;
+            background-color: #CBD5E0; /* gray-400 */
+            height: 4px;
+            transform-origin: left center;
+            z-index: 5;
+            transition: all 0.3s ease-in-out;
+        }
+        .edge.in-path {
+            background-color: #34D399; /* green-400 */
+            height: 6px;
+        }
+        .edge-label {
+            position: absolute;
+            background-color: #f7fafc; /* gray-100 */
+            color: #718096; /* gray-500 */
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 6;
+            transition: all 0.3s ease-in-out;
+        }
+        .edge.in-path .edge-label {
+            color: #065F46; /* green-800 */
+            background-color: #A7F3D0; /* green-200 */
+        }
+        details > summary {
+            cursor: pointer;
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto px-4 py-8">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900">Interactive Shortest Path Explorer</h1>
+            <p class="mt-4 text-lg text-gray-600">Visualizing network optimization problems</p>
+        </header>
+
+        <main class="space-y-16">
+            
+            <!-- Introduction Section -->
+            <section id="intro" class="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-md">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">What is the Shortest Path Problem?</h2>
+                <p class="text-gray-600 leading-relaxed">
+                    The Shortest Path Problem is a classic challenge in graph theory. The goal is to find the most efficient route between two points (nodes) in a network. Each connection (edge) has a "cost" or "weight," such as distance, time, or expense. This application interactively finds the path with the minimum total weight. It's like finding the quickest route on a map, but the principle applies to logistics, networking, and many other fields.
+                </p>
+            </section>
+
+            <!-- Interactive Visualization Section -->
+            <section id="visualization" class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">Network Graph Visualizer</h2>
+                <p class="text-center text-gray-500 mb-6">Select a source and sink node to find the shortest path.</p>
+                
+                <div class="flex flex-col md:flex-row gap-6 justify-center items-center mb-6">
+                    <div class="flex items-center gap-3">
+                        <label for="source-node" class="font-semibold text-gray-700">Source:</label>
+                        <select id="source-node" class="p-2 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 focus:ring-opacity-50"></select>
+                    </div>
+                    <div class="text-2xl text-gray-400">→</div>
+                    <div class="flex items-center gap-3">
+                        <label for="sink-node" class="font-semibold text-gray-700">Sink:</label>
+                        <select id="sink-node" class="p-2 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring focus:ring-teal-200 focus:ring-opacity-50"></select>
+                    </div>
+                    <button id="find-path-btn" class="w-full md:w-auto bg-teal-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-teal-700 transition-colors shadow">Find Path</button>
+                </div>
+
+                <div class="w-full max-w-2xl mx-auto min-h-[350px] md:min-h-[400px] bg-gray-100 rounded-lg p-4 relative" id="graph-container">
+                    <!-- Nodes and Edges will be injected here by JavaScript -->
+                </div>
+
+                <div id="result-display" class="mt-6 text-center h-16 flex flex-col justify-center items-center">
+                    <!-- Result will be shown here -->
+                </div>
+            </section>
+            
+            <!-- LP Formulation Section -->
+            <section id="lp-formulation" class="max-w-3xl mx-auto">
+                <details class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <summary class="p-6 flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-gray-800">Linear Programming Formulation</h2>
+                        <span class="text-teal-600 transform transition-transform duration-300">▼</span>
+                    </summary>
+                    <div class="px-6 pb-6 border-t border-gray-200">
+                        <p class="text-gray-600 mt-4 mb-6 leading-relaxed">
+                            The Shortest Path problem can be modeled as a linear program. We treat it as a minimum-cost flow problem where we send 1 unit of "flow" from the source to the sink. The goal is to choose a path of edges that minimizes total cost while ensuring the flow is conserved at each node.
+                        </p>
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-semibold">Objective Function: Minimize Total Cost</h3>
+                            <div class="p-4 bg-gray-100 rounded-md font-mono text-sm">
+                                Minimize  &sum;<sub>(u,v)&isin;E</sub> w<sub>uv</sub> x<sub>uv</sub>
+                            </div>
+                            <h3 class="text-lg font-semibold">Constraints:</h3>
+                            <ul class="list-disc list-inside space-y-3 text-gray-700">
+                                <li>
+                                    <strong>Flow out of Source:</strong> Exactly one unit of flow must leave the source node 's'.
+                                    <div class="p-3 mt-1 bg-gray-100 rounded-md font-mono text-sm">&sum; x<sub>sv</sub> - &sum; x<sub>us</sub> = 1</div>
+                                </li>
+                                <li>
+                                    <strong>Flow into Sink:</strong> Exactly one unit of flow must arrive at the sink node 't'.
+                                    <div class="p-3 mt-1 bg-gray-100 rounded-md font-mono text-sm">&sum; x<sub>tv</sub> - &sum; x<sub>ut</sub> = -1</div>
+                                </li>
+                                <li>
+                                    <strong>Flow Conservation:</strong> For all other intermediate nodes, the flow in must equal the flow out.
+                                     <div class="p-3 mt-1 bg-gray-100 rounded-md font-mono text-sm">&sum; x<sub>kv</sub> - &sum; x<sub>uk</sub> = 0</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </details>
+            </section>
+            
+        </main>
+
+        <footer class="text-center mt-16 py-6 border-t border-gray-200">
+            <p class="text-gray-500">An Interactive Web Application by Gemini</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const graphData = {
+                nodes: 5,
+                edges: {
+                    '0-1': { weight: 4 },
+                    '0-2': { weight: 2 },
+                    '1-2': { weight: 5 },
+                    '1-3': { weight: 10 },
+                    '2-3': { weight: 3 },
+                    '3-4': { weight: 4 },
+                    '2-4': { weight: 8 }
+                }
+            };
+
+            const nodePositions = {
+                0: { top: '50%', left: '10%' },
+                1: { top: '20%', left: '40%' },
+                2: { top: '80%', left: '40%' },
+                3: { top: '50%', left: '70%' },
+                4: { top: '50%', left: '90%' }
+            };
+
+            const graphContainer = document.getElementById('graph-container');
+            const sourceSelect = document.getElementById('source-node');
+            const sinkSelect = document.getElementById('sink-node');
+            const findPathBtn = document.getElementById('find-path-btn');
+            const resultDisplay = document.getElementById('result-display');
+            
+            let nodesMap = {};
+            let edgesMap = {};
+
+            function initializeGraph() {
+                // Clear previous graph
+                graphContainer.innerHTML = '';
+                nodesMap = {};
+                edgesMap = {};
+
+                // Create Edges
+                Object.entries(graphData.edges).forEach(([key, data]) => {
+                    const [u, v] = key.split('-').map(Number);
+                    const posU = nodePositions[u];
+                    const posV = nodePositions[v];
+                    
+                    const elU = { x: parseFloat(posU.left), y: parseFloat(posU.top) };
+                    const elV = { x: parseFloat(posV.left), y: parseFloat(posV.top) };
+
+                    const angle = Math.atan2(elV.y - elU.y, elV.x - elU.x) * 180 / Math.PI;
+                    const length = Math.sqrt(Math.pow(elV.x - elU.x, 2) + Math.pow(elV.y - elU.y, 2));
+
+                    const edgeEl = document.createElement('div');
+                    edgeEl.className = 'edge';
+                    edgeEl.id = `edge-${key}`;
+                    edgeEl.style.width = `${length}%`;
+                    edgeEl.style.top = posU.top;
+                    edgeEl.style.left = posU.left;
+                    edgeEl.style.transform = `rotate(${angle}deg)`;
+                    
+                    const labelEl = document.createElement('span');
+                    labelEl.className = 'edge-label';
+                    labelEl.textContent = data.weight;
+                    labelEl.style.top = `${(elU.y + elV.y) / 2 - 2}%`;
+                    labelEl.style.left = `${(elU.x + elV.x) / 2 - 2}%`;
+                    edgeEl.appendChild(labelEl);
+                    
+                    graphContainer.appendChild(edgeEl);
+                    edgesMap[key] = edgeEl;
+                });
+
+
+                // Create Nodes
+                for (let i = 0; i < graphData.nodes; i++) {
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = 'node w-12 h-12 md:w-14 md:h-14';
+                    nodeEl.id = `node-${i}`;
+                    nodeEl.textContent = i;
+                    nodeEl.style.top = `calc(${nodePositions[i].top} - 24px)`; // Center node
+                    nodeEl.style.left = `calc(${nodePositions[i].left} - 24px)`;
+                    graphContainer.appendChild(nodeEl);
+                    nodesMap[i] = nodeEl;
+
+                    const optionSource = document.createElement('option');
+                    optionSource.value = i;
+                    optionSource.textContent = `Node ${i}`;
+                    sourceSelect.appendChild(optionSource);
+
+                    const optionSink = document.createElement('option');
+                    optionSink.value = i;
+                    optionSink.textContent = `Node ${i}`;
+                    sinkSelect.appendChild(optionSink);
+                }
+
+                sourceSelect.value = 0;
+                sinkSelect.value = 4;
+            }
+
+            function dijkstra(start, end) {
+                const distances = {};
+                const prev = {};
+                const pq = new Set();
+
+                for (let i = 0; i < graphData.nodes; i++) {
+                    distances[i] = Infinity;
+                    prev[i] = null;
+                    pq.add(i);
+                }
+                distances[start] = 0;
+
+                while (pq.size > 0) {
+                    let u = null;
+                    let minDistance = Infinity;
+                    for (const node of pq) {
+                        if (distances[node] < minDistance) {
+                            minDistance = distances[node];
+                            u = node;
+                        }
+                    }
+
+                    if (u === null || u === end) break;
+                    pq.delete(u);
+
+                    Object.keys(graphData.edges).forEach(edgeKey => {
+                        const [node1, node2] = edgeKey.split('-').map(Number);
+                        if (node1 === u || node2 === u) {
+                            const neighbor = node1 === u ? node2 : node1;
+                            if (pq.has(neighbor)) {
+                                const alt = distances[u] + graphData.edges[edgeKey].weight;
+                                if (alt < distances[neighbor]) {
+                                    distances[neighbor] = alt;
+                                    prev[neighbor] = u;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                const path = [];
+                let current = end;
+                while (current !== null) {
+                    path.unshift(current);
+                    current = prev[current];
+                }
+
+                if (path[0] === start) {
+                    return { cost: distances[end], path };
+                } else {
+                    return { cost: Infinity, path: [] };
+                }
+            }
+            
+            function highlightPath(path) {
+                // Reset all highlights
+                Object.values(nodesMap).forEach(n => n.classList.remove('in-path'));
+                Object.values(edgesMap).forEach(e => e.classList.remove('in-path'));
+
+                if (!path || path.length === 0) return;
+
+                // Highlight nodes
+                path.forEach(nodeId => {
+                    nodesMap[nodeId].classList.add('in-path');
+                });
+
+                // Highlight edges
+                for (let i = 0; i < path.length - 1; i++) {
+                    const u = path[i];
+                    const v = path[i + 1];
+                    const edgeKey1 = `${u}-${v}`;
+                    const edgeKey2 = `${v}-${u}`;
+                    if (edgesMap[edgeKey1]) edgesMap[edgeKey1].classList.add('in-path');
+                    if (edgesMap[edgeKey2]) edgesMap[edgeKey2].classList.add('in-path');
+                }
+            }
+            
+            function findAndDisplayPath() {
+                const source = parseInt(sourceSelect.value);
+                const sink = parseInt(sinkSelect.value);
+                
+                resultDisplay.innerHTML = '';
+
+                if (source === sink) {
+                    highlightPath([]);
+                    resultDisplay.innerHTML = `<p class="text-lg font-semibold text-orange-600">Source and Sink cannot be the same.</p>`;
+                    return;
+                }
+
+                const result = dijkstra(source, sink);
+
+                highlightPath(result.path);
+
+                if (result.cost === Infinity) {
+                    resultDisplay.innerHTML = `<p class="text-lg font-semibold text-red-600">No path found between Node ${source} and Node ${sink}.</p>`;
+                } else {
+                    resultDisplay.innerHTML = `
+                        <p class="text-xl font-bold text-gray-800">Total Cost: <span class="text-teal-600">${result.cost}</span></p>
+                        <p class="text-md text-gray-600 mt-1">Path: ${result.path.join(' → ')}</p>
+                    `;
+                }
+            }
+
+            findPathBtn.addEventListener('click', findAndDisplayPath);
+            
+            // Accordion logic for details/summary
+            const detailsElement = document.querySelector('details');
+            detailsElement.addEventListener('toggle', event => {
+                const summary = detailsElement.querySelector('summary span');
+                if (detailsElement.open) {
+                    summary.style.transform = 'rotate(180deg)';
+                } else {
+                    summary.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            initializeGraph();
+            findAndDisplayPath(); // Initial run with default values
+        });
+    </script>
+</body>
+</html>
