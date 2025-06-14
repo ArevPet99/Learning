@@ -1,7 +1,8 @@
-Python Network Structures and Shortest Path Algorithms
-This project provides a pure Python implementation of a versatile network data structure along with tools for solving graph-based optimization problems. It demonstrates how to represent networks and solve problems like the shortest path using both a direct network object implementation and a traditional tabular (matrix-based) implementation.
+**Python Network Structures and Shortest Path Algorithms**
 
-Features ✨
+**This project provides a pure Python implementation of a versatile network data structure along with tools for solving graph-based optimization problems. It demonstrates how to represent networks and solve problems like the shortest path using both a direct network object implementation and a traditional tabular (matrix-based) implementation.**
+
+**Features** ✨
 Network Class: A robust Network class to build weighted graphs, supporting both directed and undirected modes.
 
 Weighted Edges: Easily add edges with associated weights, which are essential for many optimization problems.
@@ -18,7 +19,7 @@ shortest_path_tabular(): Operates on the weighted adjacency matrix.
 
 No Dependencies: The entire implementation uses standard Python libraries.
 
-How to Use
+**How to Use**
 The following examples demonstrate how to use the Network class and the shortest path functions.
 
 1. Creating a Weighted Network
