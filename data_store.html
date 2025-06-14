@@ -31,9 +31,30 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .input-field {
+             @apply mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-blue-500 focus:border-blue-500 sm:text-sm p-3;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen">
+
+    <!-- Firebase Config Modal -->
+    <div id="config-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700 w-full max-w-lg">
+            <h2 class="text-2xl font-bold text-white mb-4">Firebase Configuration Required</h2>
+            <p class="text-gray-400 mb-6">To run this app outside its original environment, please provide your Firebase project configuration. You can find this in your Firebase project settings.</p>
+            <form id="config-form" class="space-y-4">
+                <input type="text" id="apiKey" placeholder="API Key" class="input-field" required>
+                <input type="text" id="authDomain" placeholder="Auth Domain (project-id.firebaseapp.com)" class="input-field" required>
+                <input type="text" id="projectId" placeholder="Project ID" class="input-field" required>
+                <input type="text" id="storageBucket" placeholder="Storage Bucket (project-id.appspot.com)" class="input-field" required>
+                <input type="text" id="messagingSenderId" placeholder="Messaging Sender ID" class="input-field" required>
+                <input type="text" id="appId" placeholder="App ID" class="input-field" required>
+                <button type="submit" class="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">Save and Connect</button>
+            </form>
+        </div>
+    </div>
+
 
     <div id="loading-spinner" class="text-center">
         <svg class="animate-spin h-10 w-10 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -52,11 +73,8 @@
             </div>
         </div>
 
-        <!-- Main Grid Layout -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Left Column: Store and Retrieve -->
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 space-y-8">
-                <!-- Store Data Section -->
                 <div>
                     <h2 class="text-2xl font-semibold text-white mb-4">Store Data</h2>
                     <div class="space-y-4">
@@ -73,13 +91,11 @@
                         </button>
                     </div>
                 </div>
-                 <!-- Toast Notification -->
                 <div id="toast" class="fixed bottom-10 right-10 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl text-lg opacity-0 translate-y-4 transition-all duration-300">
                     Data stored successfully!
                 </div>
             </div>
 
-            <!-- Right Column: Live Data Store -->
             <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
                 <h2 class="text-2xl font-semibold text-white mb-4">Live Data Store</h2>
                 <p class="text-sm text-gray-400 mb-4">This table updates in real-time as peers add or update data.</p>
@@ -93,7 +109,6 @@
                             </tr>
                         </thead>
                         <tbody id="data-table-body" class="divide-y divide-gray-700 bg-gray-900">
-                            <!-- Data rows will be inserted here dynamically -->
                              <tr id="no-data-row">
                                 <td colspan="3" class="text-center py-8 px-4 text-gray-500">No data in the network yet...</td>
                             </tr>
@@ -105,17 +120,14 @@
     </main>
 
     <script type="module">
-        // --- Firebase SDK Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Configuration and Initialization ---
-        // These global variables are provided by the environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'p2p-data-store-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-
+        // --- App State & Global Variables ---
         let app, db, auth, userId, isAuthReady = false;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'p2p-data-store-default';
+        const FIREBASE_CONFIG_LOCAL_STORAGE_KEY = 'p2p_firebase_config';
 
         // --- UI Element References ---
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -127,28 +139,56 @@
         const dataTableBody = document.getElementById('data-table-body');
         const noDataRow = document.getElementById('no-data-row');
         const toast = document.getElementById('toast');
+        const configModal = document.getElementById('config-modal');
+        const configForm = document.getElementById('config-form');
 
         // --- Firestore Collection Path ---
         const collectionPath = `artifacts/${appId}/public/data/p2p_data`;
 
         /**
-         * Initializes the Firebase application and services.
+         * The main entry point for the application. Checks for Firebase config and starts initialization.
          */
-        function initializeFirebase() {
+        function main() {
+            let firebaseConfig;
+
+            // Case 1: Config is injected by the environment
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                firebaseConfig = JSON.parse(__firebase_config);
+                initializeAppWithConfig(firebaseConfig);
+                return;
+            }
+
+            // Case 2: Config is saved in local storage
+            const storedConfig = localStorage.getItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
+            if (storedConfig) {
+                firebaseConfig = JSON.parse(storedConfig);
+                initializeAppWithConfig(firebaseConfig);
+                return;
+            }
+
+            // Case 3: No config found, show the modal to get it from the user
+            loadingSpinner.classList.add('hidden');
+            configModal.classList.remove('hidden');
+        }
+
+        /**
+         * Initializes the entire Firebase application with a given configuration object.
+         * @param {object} firebaseConfig - The Firebase project configuration.
+         */
+        function initializeAppWithConfig(firebaseConfig) {
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                handleAuthentication();
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                loadingSpinner.innerHTML = '<p class="text-red-500">Failed to initialize. Please check console.</p>';
+                loadingSpinner.classList.remove('hidden');
+                loadingSpinner.innerHTML = `<p class="text-red-500">Failed to initialize with the provided config. Please check console and refresh to try again.</p>`;
+                localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY); // Clear bad config
             }
         }
 
-        /**
-         * Handles user authentication, signing in with a custom token if available,
-         * or anonymously as a fallback.
-         */
         async function handleAuthentication() {
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
@@ -156,69 +196,51 @@
                     isAuthReady = true;
                     console.log("Authenticated with User ID:", userId);
                     userIdElement.textContent = userId;
-                    setupRealtimeListener(); // Start listening for data now that we are authenticated
+                    setupRealtimeListener();
                     showAppContent();
                 } else {
                     try {
-                        // The environment provides __initial_auth_token
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            console.log("Signing in with custom token...");
                             await signInWithCustomToken(auth, __initial_auth_token);
                         } else {
-                            console.log("No custom token, signing in anonymously...");
                             await signInAnonymously(auth);
                         }
                     } catch (error) {
                         console.error("Authentication failed:", error);
+                        loadingSpinner.classList.remove('hidden');
                         loadingSpinner.innerHTML = '<p class="text-red-500">Authentication failed. The app cannot connect.</p>';
                     }
                 }
             });
         }
         
-        /**
-         * Shows the main application content and hides the loading spinner.
-         */
         function showAppContent() {
             loadingSpinner.classList.add('hidden');
+            configModal.classList.add('hidden');
             appContent.classList.remove('hidden');
             appContent.classList.add('fade-in');
         }
 
-        /**
-         * Renders the data from Firestore into the HTML table.
-         * @param {Array<Object>} data - An array of data objects from Firestore.
-         */
         function renderDataTable(data) {
-            // Clear previous content
             dataTableBody.innerHTML = '';
-            
             if (data.length === 0) {
                  dataTableBody.appendChild(noDataRow);
                  return;
             }
-
-            // Sort data by key for consistent ordering
             const sortedData = data.sort((a, b) => a.key.localeCompare(b.key));
-
             sortedData.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.classList.add('hover:bg-gray-800', 'fade-in');
-
                 const keyTd = document.createElement('td');
                 keyTd.className = 'py-4 px-4 text-sm font-mono text-cyan-400';
                 keyTd.textContent = item.key;
-
                 const valueTd = document.createElement('td');
                 valueTd.className = 'py-4 px-4 text-sm text-gray-300 font-mono whitespace-pre-wrap break-all';
                 valueTd.textContent = item.value;
-
                 const ownerTd = document.createElement('td');
                 ownerTd.className = 'py-4 px-4 text-sm text-gray-500 font-mono';
-                // Display a shorter version of the owner ID for readability
                 ownerTd.textContent = `${item.ownerId.substring(0, 8)}...`;
-                ownerTd.title = item.ownerId; // Show full ID on hover
-
+                ownerTd.title = item.ownerId;
                 tr.appendChild(keyTd);
                 tr.appendChild(valueTd);
                 tr.appendChild(ownerTd);
@@ -226,26 +248,17 @@
             });
         }
 
-
-        /**
-         * Sets up a real-time listener on the Firestore collection.
-         * This function is the core of the P2P simulation.
-         */
         function setupRealtimeListener() {
             if (!isAuthReady) {
                 console.warn("Auth not ready, skipping listener setup.");
                 return;
             }
             const q = query(collection(db, collectionPath));
-            
             onSnapshot(q, (querySnapshot) => {
                 console.log("Received network data update.");
                 const networkData = [];
                 querySnapshot.forEach((doc) => {
-                    networkData.push({
-                        key: doc.id,
-                        ...doc.data()
-                    });
+                    networkData.push({ key: doc.id, ...doc.data() });
                 });
                 renderDataTable(networkData);
             }, (error) => {
@@ -254,54 +267,40 @@
             });
         }
         
-        /**
-         * Shows a temporary toast notification.
-         */
         function showToast(message) {
             toast.textContent = message;
             toast.classList.remove('opacity-0', 'translate-y-4');
             toast.classList.add('opacity-100', 'translate-y-0');
-
             setTimeout(() => {
                 toast.classList.remove('opacity-100', 'translate-y-0');
                 toast.classList.add('opacity-0', 'translate-y-4');
             }, 3000);
         }
 
-        /**
-         * Stores or updates a key-value pair in Firestore. The document ID is the key.
-         */
         async function storeData() {
             if (!isAuthReady) {
                 alert("Cannot store data: Not connected to the network yet.");
                 return;
             }
-            
             const key = dataKeyInput.value.trim();
             const value = dataValueInput.value;
-
             if (!key) {
                 alert("Data Key cannot be empty.");
                 return;
             }
-
             storeButton.disabled = true;
             storeButton.textContent = "Storing...";
-            
             try {
-                // We use the key as the document ID for easy lookup and updates.
                 const docRef = doc(db, collectionPath, key);
                 await setDoc(docRef, {
                     value: value,
                     ownerId: userId,
                     timestamp: new Date().toISOString()
                 });
-
                 console.log(`Data stored with key: ${key}`);
                 showToast('Data published to network!');
                 dataKeyInput.value = '';
                 dataValueInput.value = '';
-
             } catch (error) {
                 console.error("Error storing data: ", error);
                 alert("Failed to store data. Check the console for errors.");
@@ -314,11 +313,24 @@
         // --- Event Listeners ---
         storeButton.addEventListener('click', storeData);
 
-        // --- Application Start ---
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeFirebase();
-            handleAuthentication();
+        configForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userConfig = {
+                apiKey: document.getElementById('apiKey').value,
+                authDomain: document.getElementById('authDomain').value,
+                projectId: document.getElementById('projectId').value,
+                storageBucket: document.getElementById('storageBucket').value,
+                messagingSenderId: document.getElementById('messagingSenderId').value,
+                appId: document.getElementById('appId').value,
+            };
+            localStorage.setItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY, JSON.stringify(userConfig));
+            configModal.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            initializeAppWithConfig(userConfig);
         });
+
+        // --- Application Start ---
+        document.addEventListener('DOMContentLoaded', main);
 
     </script>
 </body>
