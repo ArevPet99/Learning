@@ -74,5 +74,7 @@ print(net_from_adj)
 The script `network_structures.py` can be executed directly to see a demonstration of all features for both a sample undirected and a sample directed network.
 
 ```bash
-python network_structures.py
+python network_structures.py<img width="993" alt="Screenshot 2025-06-15 at 2 00 02 AM" src="https://github.com/user-attachments/assets/0e96144b-685b-4d4b-9963-b3647ccb735f" />
+<img width="981" alt="Screenshot 2025-06-15 at 1 59 54 AM" src="https://github.com/user-attachments/assets/c5a0ebbb-790e-4ac8-ab67-daca0227dcf4" />
+
 ```
