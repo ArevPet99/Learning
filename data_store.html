@@ -61,7 +61,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="mt-4 text-lg">Connecting to the P2P Network...</p>
+        <p id="loading-text" class="mt-4 text-lg">Connecting to the P2P Network...</p>
     </div>
 
     <main id="app-content" class="container mx-auto p-4 md:p-8 max-w-7xl hidden">
@@ -131,6 +131,7 @@
 
         // --- UI Element References ---
         const loadingSpinner = document.getElementById('loading-spinner');
+        const loadingText = document.getElementById('loading-text');
         const appContent = document.getElementById('app-content');
         const userIdElement = document.getElementById('user-id');
         const storeButton = document.getElementById('store-button');
@@ -149,30 +150,24 @@
          * The main entry point for the application. Checks for Firebase config and starts initialization.
          */
         function main() {
-            // Case 1: Config is injected by the environment
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
                 const firebaseConfig = JSON.parse(__firebase_config);
                 initializeAppWithConfig(firebaseConfig);
                 return;
             }
-
-            // Case 2: Config is saved in local storage. This is the robust check.
             const storedConfigJSON = localStorage.getItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
             if (storedConfigJSON) {
                 try {
                     const firebaseConfig = JSON.parse(storedConfigJSON);
-                    // Crucially, check if the parsed config is valid before using it.
                     if (firebaseConfig && firebaseConfig.projectId) {
                         initializeAppWithConfig(firebaseConfig);
-                        return; // Exit if initialization can proceed
+                        return;
                     }
                 } catch (e) {
                     console.error("Failed to parse stored Firebase config. Clearing it.", e);
                     localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
                 }
             }
-
-            // Case 3: No valid config found, show the modal to get it from the user.
             loadingSpinner.classList.add('hidden');
             configModal.classList.remove('hidden');
         }
@@ -190,8 +185,8 @@
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
                 loadingSpinner.classList.remove('hidden');
-                loadingSpinner.innerHTML = `<p class="text-red-500">Failed to initialize with the provided config. Please check console and refresh to try again.</p>`;
-                localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY); // Clear bad config
+                loadingText.innerHTML = `<p class="text-red-500">Failed to initialize. The provided config may be invalid. Refresh to try again.</p>`;
+                localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
             }
         }
 
@@ -214,7 +209,13 @@
                     } catch (error) {
                         console.error("Authentication failed:", error);
                         loadingSpinner.classList.remove('hidden');
-                        loadingSpinner.innerHTML = '<p class="text-red-500">Authentication failed. The app cannot connect.</p>';
+                        let errorMessage = 'Authentication failed. The app cannot connect.';
+                        // Check for specific, common errors to provide better feedback
+                        if (error.code === 'auth/api-key-not-valid') {
+                            errorMessage = 'Authentication Error: The provided API Key is not valid. Please refresh and enter a valid config.';
+                            localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY); // Clear the bad config
+                        }
+                        loadingText.innerHTML = `<p class="text-red-500">${errorMessage}</p>`;
                     }
                 }
             });
@@ -332,6 +333,7 @@
             localStorage.setItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY, JSON.stringify(userConfig));
             configModal.classList.add('hidden');
             loadingSpinner.classList.remove('hidden');
+            loadingText.innerHTML = `<p class="mt-4 text-lg">Connecting to the P2P Network...</p>`;
             initializeAppWithConfig(userConfig);
         });
 
