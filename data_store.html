@@ -126,7 +126,7 @@
 
         // --- App State & Global Variables ---
         let app, db, auth, userId, isAuthReady = false;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'p2p-data-store-default';
+        const appIdName = typeof __app_id !== 'undefined' ? __app_id : 'p2p-data-store-default';
         const FIREBASE_CONFIG_LOCAL_STORAGE_KEY = 'p2p_firebase_config';
 
         // --- UI Element References ---
@@ -143,30 +143,36 @@
         const configForm = document.getElementById('config-form');
 
         // --- Firestore Collection Path ---
-        const collectionPath = `artifacts/${appId}/public/data/p2p_data`;
+        const collectionPath = `artifacts/${appIdName}/public/data/p2p_data`;
 
         /**
          * The main entry point for the application. Checks for Firebase config and starts initialization.
          */
         function main() {
-            let firebaseConfig;
-
             // Case 1: Config is injected by the environment
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                firebaseConfig = JSON.parse(__firebase_config);
+                const firebaseConfig = JSON.parse(__firebase_config);
                 initializeAppWithConfig(firebaseConfig);
                 return;
             }
 
-            // Case 2: Config is saved in local storage
-            const storedConfig = localStorage.getItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
-            if (storedConfig) {
-                firebaseConfig = JSON.parse(storedConfig);
-                initializeAppWithConfig(firebaseConfig);
-                return;
+            // Case 2: Config is saved in local storage. This is the robust check.
+            const storedConfigJSON = localStorage.getItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
+            if (storedConfigJSON) {
+                try {
+                    const firebaseConfig = JSON.parse(storedConfigJSON);
+                    // Crucially, check if the parsed config is valid before using it.
+                    if (firebaseConfig && firebaseConfig.projectId) {
+                        initializeAppWithConfig(firebaseConfig);
+                        return; // Exit if initialization can proceed
+                    }
+                } catch (e) {
+                    console.error("Failed to parse stored Firebase config. Clearing it.", e);
+                    localStorage.removeItem(FIREBASE_CONFIG_LOCAL_STORAGE_KEY);
+                }
             }
 
-            // Case 3: No config found, show the modal to get it from the user
+            // Case 3: No valid config found, show the modal to get it from the user.
             loadingSpinner.classList.add('hidden');
             configModal.classList.remove('hidden');
         }
