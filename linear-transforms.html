@@ -1,0 +1,566 @@
+
+Conversation opened. 1 unread message.
+
+Skip to content
+Using Gmail with screen readers
+Enable desktop notifications for Gmail.   OK  No thanks
+1 of 671
+(no subject)
+Inbox
+Arev Petoyan
+	
+11:19 PM (2 minutes ago)
+	
+	
+to me
+It looks like this message is in Armenian
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+  <meta charset="UTF-8">
+  <title>Գծային ձևափոխություններ և կոմպոզիցիա – Presets + Բացատրություն</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin: 0;
+      padding: 16px;
+    }
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .matrix-block {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #fafafa;
+      max-width: 260px;
+      font-size: 14px;
+    }
+    .matrix-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 70px);
+      gap: 4px;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .matrix input {
+      width: 64px;
+      padding: 4px;
+      text-align: center;
+    }
+    button {
+      margin-top: 4px;
+      margin-right: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    canvas {
+      border: 1px solid #aaa;
+      background: #fff;
+      margin-top: 8px;
+    }
+    #legend {
+      font-size: 13px;
+      color: #444;
+    }
+    #presets-bar {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      background: #fdfdfd;
+      font-size: 13px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+    }
+    #description-block {
+      margin-top: 10px;
+      max-width: 800px;
+      font-size: 13px;
+      line-height: 1.4;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fcfcfc;
+    }
+    .desc-title {
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .desc-matrix {
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Գծային ձևափոխություններ, դրանց համադրություն և վիզուալիզացիա</h2>
+
+  <div id="controls">
+    <div class="matrix-block">
+      <div class="matrix-title">Առաջին ձևափոխություն M₁</div>
+      <div>\( M_1 = \begin{pmatrix} a₁ & b₁ \\ c₁ & d₁ \end{pmatrix} \)</div>
+      <div class="matrix">
+        <input id="a1" type="number" step="0.1" value="1">
+        <input id="b1" type="number" step="0.1" value="0">
+        <input id="c1" type="number" step="0.1" value="0">
+        <input id="d1" type="number" step="0.1" value="1">
+      </div>
+      <button id="reset1">Reset M₁ (Identity)</button>
+    </div>
+
+    <div class="matrix-block">
+      <div class="matrix-title">Երկրորդ ձևափոխություն M₂ (կիրառվում է M₁–ից հետո)</div>
+      <div>\( M_2 = \begin{pmatrix} a₂ & b₂ \\ c₂ & d₂ \end{pmatrix} \)</div>
+      <div class="matrix">
+        <input id="a2" type="number" step="0.1" value="1">
+        <input id="b2" type="number" step="0.1" value="0">
+        <input id="c2" type="number" step="0.1" value="0">
+        <input id="d2" type="number" step="0.1" value="1">
+      </div>
+      <button id="reset2">Reset M₂ (Identity)</button>
+    </div>
+
+    <div class="matrix-block">
+      <div class="matrix-title">Կոմպոզիցիա M = M₂ ∘ M₁ = M₂ · M₁</div>
+      <div id="comp-display">
+        M = [[1.00, 0.00], [0.00, 1.00]]
+      </div>
+      <button id="resetAll">Reset բոլորը</button>
+    </div>
+  </div>
+
+  <div id="presets-bar">
+    Preset-ներ կիրառել՝
+    <select id="presetTarget">
+      <option value="M1">M₁</option>
+      <option value="M2">M₂</option>
+    </select>
+    <button data-preset="identity">Identity</button>
+    <button data-preset="rot45">Rotation 45°</button>
+    <button data-preset="rot90">Rotation 90°</button>
+    <button data-preset="scale2">Uniform scale ×2</button>
+    <button data-preset="scalex2">Scale x → ×2</button>
+    <button data-preset="shearx">Shear in x</button>
+  </div>
+
+  <div id="legend">
+    Մոխրագույն՝ սկզբնական բազիս և միավոր քառակուսին • Կապույտ/կանաչ՝ M₁ հետո • Կարմիր/մանուշակագույն՝ M₂∘M₁ հետո
+  </div>
+
+  <canvas id="canvas" width="520" height="520"></canvas>
+
+  <div id="description-block">
+    <div class="desc-title">Բացատրություն ձևափոխությունների մասին</div>
+    <div class="desc-matrix" id="descM1"></div>
+    <div class="desc-matrix" id="descM2"></div>
+    <div class="desc-matrix" id="descM"></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const center = { x: canvas.width / 2, y: canvas.height / 2 };
+    const scale = 60; // 1 միավոր = 60 px
+
+    // ----- Inputs -----
+    const a1 = document.getElementById("a1");
+    const b1 = document.getElementById("b1");
+    const c1 = document.getElementById("c1");
+    const d1 = document.getElementById("d1");
+
+    const a2 = document.getElementById("a2");
+    const b2 = document.getElementById("b2");
+    const c2 = document.getElementById("c2");
+    const d2 = document.getElementById("d2");
+
+    const reset1 = document.getElementById("reset1");
+    const reset2 = document.getElementById("reset2");
+    const resetAll = document.getElementById("resetAll");
+    const compDisplay = document.getElementById("comp-display");
+
+    const presetTarget = document.getElementById("presetTarget");
+    const presetButtons = document.querySelectorAll("#presets-bar button[data-preset]");
+
+    const descM1 = document.getElementById("descM1");
+    const descM2 = document.getElementById("descM2");
+    const descM  = document.getElementById("descM");
+
+    function getM1() {
+      return {
+        a: parseFloat(a1.value),
+        b: parseFloat(b1.value),
+        c: parseFloat(c1.value),
+        d: parseFloat(d1.value),
+      };
+    }
+
+    function getM2() {
+      return {
+        a: parseFloat(a2.value),
+        b: parseFloat(b2.value),
+        c: parseFloat(c2.value),
+        d: parseFloat(d2.value),
+      };
+    }
+
+    function setMatrix(target, M) {
+      if (target === "M1") {
+        a1.value = M.a; b1.value = M.b;
+        c1.value = M.c; d1.value = M.d;
+      } else {
+        a2.value = M.a; b2.value = M.b;
+        c2.value = M.c; d2.value = M.d;
+      }
+    }
+
+    // math → canvas coordinates
+    function toCanvas(p) {
+      return {
+        x: center.x + p.x * scale,
+        y: center.y - p.y * scale,
+      };
+    }
+
+    // M * v
+    function applyMatrix(M, v) {
+      return {
+        x: M.a * v.x + M.b * v.y,
+        y: M.c * v.x + M.d * v.y,
+      };
+    }
+
+    // կոմպոզիցիա՝ M = M2 * M1
+    function multiplyMatrices(M2, M1) {
+      return {
+        a: M2.a * M1.a + M2.b * M1.c,
+        b: M2.a * M1.b + M2.b * M1.d,
+        c: M2.c * M1.a + M2.d * M1.c,
+        d: M2.c * M1.b + M2.d * M1.d,
+      };
+    }
+
+    function length2D(x, y) {
+      return Math.sqrt(x * x + y * y);
+    }
+
+    function describeMatrix(label, M) {
+      const eps = 1e-3;
+      const det = M.a * M.d - M.b * M.c;
+      const trace = M.a + M.d;
+
+      const lenE1 = length2D(M.a, M.c); // պատկեր e1 = (a, c)
+      const lenE2 = length2D(M.b, M.d); // պատկեր e2 = (b, d)
+      const dot = M.a * M.b + M.c * M.d; // e1·e2
+
+      let type = "";
+      // մոտավոր դասակարգում
+      const isAxesScale = Math.abs(M.b) < eps && Math.abs(M.c) < eps;
+      const isIdentity =
+        Math.abs(M.a - 1) < eps &&
+        Math.abs(M.d - 1) < eps &&
+        Math.abs(M.b) < eps &&
+        Math.abs(M.c) < eps;
+
+      if (isIdentity) {
+        type = "մոտավորապես ինքնություն (չի փոխում ձևը, ուղղությունները)։";
+      } else if (
+        Math.abs(dot) < eps &&
+        Math.abs(lenE1 - lenE2) < eps &&
+        Math.abs(lenE1 - 1) < eps &&
+        Math.abs(det - 1) < eps
+      ) {
+        type = "մոտավորապես մաքուր պտտում է՝ առանց ձգման (երկու բազիս վեկտորներն օրթոնորմալ են, det≈1)։";
+      } else if (isAxesScale) {
+        if (M.a > 0 && M.d > 0) {
+          type = "ուղղահայաց/հորիզոնական ձգում (scale) է առանց պտտման։";
+        } else if (M.a * M.d < 0) {
+          type = "առանցքի նկատմամբ հայելային արտապատկերում + ձգում է (մեկ ուղղությունը շրջված է)։";
+        } else {
+          type = "ուղղահայաց/հորիզոնական scale + հնարավոր արտապատկերում է առանց shear-ի։";
+        }
+      } else if (
+        Math.abs(M.a - 1) < eps &&
+        Math.abs(M.d - 1) < eps &&
+        (Math.abs(M.b) > eps ^ Math.abs(M.c) > eps)
+      ) {
+        type = "shear (թեքում) է՝ առանց մաքուր պտտման կամ հավասարաչափ ձգման։";
+      } else {
+        type = "ընդհանուր գծային ձևափոխություն է (պտտում + ձգում + հնարավոր shear/արտապատկերում)։";
+      }
+
+      let detText = "";
+      if (Math.abs(det) < eps) {
+        detText = "det≈0 ⇒ տարածքը սեղմվում է դեպի ուղիղ (կիլինեարացում), պատկերն ինվերտելի չէ։";
+      } else if (det > 0) {
+        detText = `det≈${det.toFixed(2)} > 0 ⇒ տարածքը բազմապատկվում է մոտավորապես ${Math.abs(det).toFixed(2)} անգամ, ուղղության կողմնորոշումը պահպանվում է։`;
+      } else {
+        detText = `det≈${det.toFixed(2)} < 0 ⇒ տարածքը բազմապատկվում է մոտավորապես ${Math.abs(det).toFixed(2)} անգամ, բայց կա հայելային շրջում (orientation flip)։`;
+      }
+
+      const scaleText =
+        `|M(e₁)|≈${lenE1.toFixed(2)}, |M(e₂)|≈${lenE2.toFixed(2)}, tr≈${trace.toFixed(2)}։`;
+
+      return `<b>${label}</b> ⇒ ${type}<br>det(M) = ${det.toFixed(3)}. ${detText}<br>${scaleText}`;
+    }
+
+    function updateDescriptions(M1, M2, M) {
+      descM1.innerHTML = describeMatrix("M₁", M1);
+      descM2.innerHTML = describeMatrix("M₂", M2);
+      descM.innerHTML  = describeMatrix("M = M₂ ∘ M₁", M);
+    }
+
+    function updateCompDisplay(M) {
+      compDisplay.textContent = `M = [[${M.a.toFixed(2)}, ${M.b.toFixed(2)}], [${M.c.toFixed(2)}, ${M.d.toFixed(2)}]]`;
+    }
+
+    function drawGrid() {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // ֆոնային ցանց
+      ctx.strokeStyle = "#eee";
+      ctx.lineWidth = 1;
+
+      for (let x = -4; x <= 4; x++) {
+        const p1 = toCanvas({ x, y: -4 });
+        const p2 = toCanvas({ x, y: 4 });
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+      for (let y = -4; y <= 4; y++) {
+        const p1 = toCanvas({ x: -4, y });
+        const p2 = toCanvas({ x: 4, y });
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+
+      // առանցքներ
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1.5;
+
+      // x առանցք
+      let p1 = toCanvas({ x: -4, y: 0 });
+      let p2 = toCanvas({ x: 4, y: 0 });
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      // y առանցք
+      p1 = toCanvas({ x: 0, y: -4 });
+      p2 = toCanvas({ x: 0, y: 4 });
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawArrow(from, to, color, lineWidth = 2) {
+      const headLen = 10;
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lineWidth;
+
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(to.x, to.y);
+      ctx.lineTo(
+        to.x - headLen * Math.cos(angle - Math.PI / 6),
+        to.y - headLen * Math.sin(angle - Math.PI / 6)
+      );
+      ctx.lineTo(
+        to.x - headLen * Math.cos(angle + Math.PI / 6),
+        to.y - headLen * Math.sin(angle + Math.PI / 6)
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawAll() {
+      const M1 = getM1();
+      const M2 = getM2();
+      const M = multiplyMatrices(M2, M1); // կոմպոզիցիա M = M2 ∘ M1
+
+      updateCompDisplay(M);
+      updateDescriptions(M1, M2, M);
+      drawGrid();
+
+      const originCanvas = toCanvas({ x: 0, y: 0 });
+
+      // -------- Original basis and unit square (grey) --------
+      const e1 = { x: 1, y: 0 };
+      const e2 = { x: 0, y: 1 };
+
+      drawArrow(originCanvas, toCanvas(e1), "#888888", 1.5);
+      drawArrow(originCanvas, toCanvas(e2), "#888888", 1.5);
+
+      const unitSquare = [
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ];
+
+      ctx.strokeStyle = "#888888";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let p = toCanvas(unitSquare[0]);
+      ctx.moveTo(p.x, p.y);
+      for (let i = 1; i < unitSquare.length; i++) {
+        p = toCanvas(unitSquare[i]);
+        ctx.lineTo(p.x, p.y);
+      }
+      p = toCanvas(unitSquare[0]);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
+      // -------- After M1 (blue/green & blue square) --------
+      const e1_M1 = applyMatrix(M1, e1);
+      const e2_M1 = applyMatrix(M1, e2);
+
+      drawArrow(originCanvas, toCanvas(e1_M1), "#0066cc", 2); // blue
+      drawArrow(originCanvas, toCanvas(e2_M1), "#00aa00", 2); // green
+
+      ctx.strokeStyle = "#0066cc";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let tp = toCanvas(applyMatrix(M1, unitSquare[0]));
+      ctx.moveTo(tp.x, tp.y);
+      for (let i = 1; i < unitSquare.length; i++) {
+        tp = toCanvas(applyMatrix(M1, unitSquare[i]));
+        ctx.lineTo(tp.x, tp.y);
+      }
+      tp = toCanvas(applyMatrix(M1, unitSquare[0]));
+      ctx.lineTo(tp.x, tp.y);
+      ctx.stroke();
+
+      // -------- After composition M2 ∘ M1 (red/purple & red square) --------
+      const e1_M = applyMatrix(M, e1);
+      const e2_M = applyMatrix(M, e2);
+
+      drawArrow(originCanvas, toCanvas(e1_M), "#cc0000", 2.5); // red
+      drawArrow(originCanvas, toCanvas(e2_M), "#aa00aa", 2.5); // purple
+
+      ctx.strokeStyle = "#cc0000";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      let tp2 = toCanvas(applyMatrix(M, unitSquare[0]));
+      ctx.moveTo(tp2.x, tp2.y);
+      for (let i = 1; i < unitSquare.length; i++) {
+        tp2 = toCanvas(applyMatrix(M, unitSquare[i]));
+        ctx.lineTo(tp2.x, tp2.y);
+      }
+      tp2 = toCanvas(applyMatrix(M, unitSquare[0]));
+      ctx.lineTo(tp2.x, tp2.y);
+      ctx.stroke();
+    }
+
+    // ----- Presets -----
+    function getPresetMatrix(presetName) {
+      const sqrt2over2 = Math.SQRT1_2; // ≈ 0.7071
+      switch (presetName) {
+        case "identity":
+          return { a: 1, b: 0, c: 0, d: 1 };
+        case "rot45":
+          return {
+            a:  sqrt2over2,
+            b: -sqrt2over2,
+            c:  sqrt2over2,
+            d:  sqrt2over2
+          };
+        case "rot90":
+          return {
+            a: 0, b: -1,
+            c: 1, d:  0
+          };
+        case "scale2":
+          return {
+            a: 2, b: 0,
+            c: 0, d: 2
+          };
+        case "scalex2":
+          return {
+            a: 2, b: 0,
+            c: 0, d: 1
+          };
+        case "shearx":
+          // shear in x with factor 1: (x, y) -> (x + y, y)
+          return {
+            a: 1, b: 1,
+            c: 0, d: 1
+          };
+        default:
+          return { a: 1, b: 0, c: 0, d: 1 };
+      }
+    }
+
+    presetButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = presetTarget.value; // "M1" or "M2"
+        const presetName = btn.getAttribute("data-preset");
+        const M = getPresetMatrix(presetName);
+        setMatrix(target, M);
+        drawAll();
+      });
+    });
+
+    // ----- Event listeners -----
+    [
+      a1, b1, c1, d1,
+      a2, b2, c2, d2
+    ].forEach((input) => input.addEventListener("input", drawAll));
+
+    reset1.addEventListener("click", () => {
+      setMatrix("M1", { a: 1, b: 0, c: 0, d: 1 });
+      drawAll();
+    });
+
+    reset2.addEventListener("click", () => {
+      setMatrix("M2", { a: 1, b: 0, c: 0, d: 1 });
+      drawAll();
+    });
+
+    resetAll.addEventListener("click", () => {
+      setMatrix("M1", { a: 1, b: 0, c: 0, d: 1 });
+      setMatrix("M2", { a: 1, b: 0, c: 0, d: 1 });
+      drawAll();
+    });
+
+    // initial draw
+    drawAll();
+  </script>
+</body>
+</html>
+
+	
