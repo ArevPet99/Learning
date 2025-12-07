@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+  <meta charset="UTF-8">
+  <title>Ազդանշանի վերլուծություն – Signal Analysis Visualizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f6f6f6;
+      color: #222;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    #top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    button {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #eee;
+    }
+    #main {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      #main {
+        grid-template-columns: 1fr;
+      }
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      font-size: 16px;
+      margin: 0 0 6px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 10px;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .stats-grid div {
+      padding: 2px 0;
+    }
+    .sigma-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .sigma-table th, .sigma-table td {
+      border: 1px solid #ddd;
+      padding: 3px 4px;
+      text-align: center;
+    }
+    .sigma-table th {
+      background: #f0f0f0;
+    }
+    #explanation {
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    canvas {
+      max-width: 100%;
+    }
+    small {
+      color: #555;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ազդանշանի վերլուծություն – Signal Analysis Visualizer</h1>
+
+  <div id="top-bar">
+    <button id="generateBtn">Գեներացնել նոր ազդանշան</button>
+    <label>
+      Նմուշների քանակը (N):
+      <input id="sampleCount" type="number" min="50" max="2000" value="500" style="width:70px;">
+    </label>
+    <label>
+      Աղմուկի մակարդակ (noise σ):
+      <input id="noiseLevel" type="number" min="0" max="2" step="0.1" value="0.5" style="width:70px;">
+    </label>
+    <small>Սինուսոիդ + աղմուկ, հետո հաշվարկվում են μ, σ, բաշխում, σ-շեմեր</small>
+  </div>
+
+  <div id="main">
+    <div class="card">
+      <h2>Ազդանշան ժամանակի ֆունկցիայի ձևով</h2>
+      <canvas id="signalChart" height="180"></canvas>
+      <small>Կապույտ գիծը՝ ազդանշանը։ Կարմիր գիծը՝ միջինը (μ)։ Նարնջագույն գծերը՝ μ±σ շեմեր։</small>
+    </div>
+
+    <div class="card">
+      <h2>Բաշխում (Histogram)</h2>
+      <canvas id="histChart" height="180"></canvas>
+      <small>Ցուցադրում է՝ ինչքան հաճախ է ազդանշանը հայտնվում տարբեր արժեքների միջակայքում։</small>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: minmax(0,1.2fr) minmax(0,2fr); gap:16px; margin-top:16px;">
+    <div class="card">
+      <h2>Վիճակագրական ցուցիչներ</h2>
+      <div class="stats-grid">
+        <div><b>Միջին (μ):</b></div> <div id="meanValue">–</div>
+        <div><b>Տիպիկ շեղում (σ):</b></div> <div id="stdValue">–</div>
+        <div><b>Min:</b></div> <div id="minValue">–</div>
+        <div><b>Max:</b></div> <div id="maxValue">–</div>
+        <div><b>N (նմուշների քանակ):</b></div> <div id="nValue">–</div>
+      </div>
+
+      <table class="sigma-table">
+        <thead>
+          <tr>
+            <th>Միջակայք</th>
+            <th>N (քանակ)</th>
+            <th>% (մոտ)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>μ ± 1σ</td>
+            <td id="cnt1">–</td>
+            <td id="pct1">–</td>
+          </tr>
+          <tr>
+            <td>μ ± 2σ</td>
+            <td id="cnt2">–</td>
+            <td id="pct2">–</td>
+          </tr>
+          <tr>
+            <td>μ ± 3σ</td>
+            <td id="cnt3">–</td>
+            <td id="pct3">–</td>
+          </tr>
+        </tbody>
+      </table>
+      <small>Համադրի՛ր սա «68–95–99.7» կանոնի հետ՝ նորմալ բաշխման համար։</small>
+    </div>
+
+    <div class="card" id="explanation">
+      <h2>Բացատրություն (μ, σ, σ-շեմեր)</h2>
+      <p><b>Միջին (μ)</b> – ազդանշանի «միջին» արժեքն է․ եթե բոլոր նմուշների գումարը բաժանենք նրանց քանակին (N), կստանանք μ։ Սա ցույց է տալիս, թե որ արժեքի շուրջ է կենտրոնացած ազդանշանը։</p>
+      <p><b>Տիպիկ շեղում (σ)</b> – չափում է, թե ինչքանով են նմուշները «ցրված» միջինի շուրջ։ Եթե σ-ն փոքր է, ապա ազդանշանը քիչ է տատանվում․ եթե σ-ն մեծ է, տատանումները մեծ են։</p>
+      <p><b>Բաշխում (histogram)</b> – x-առանցքի վրա արժեքներն են, իսկ y-առանցքի վրա՝ քանի նմուշ է ընկել այդ միջակայքի մեջ։ Սա օգնում է տեսնել՝ ազդանշանը նորմալ բաշխման նման է, թե ոչ։</p>
+      <p><b>σ-շեմեր (μ ± kσ)</b> – կարևոր շեմեր են՝
+        <ul>
+          <li>μ ± 1σ – սովորաբար նորմալ բաշխման դեպքում պարունակում է մոտ <b>68%</b> նմուշների,</li>
+          <li>μ ± 2σ – մոտ <b>95%</b>,</li>
+          <li>μ ± 3σ – մոտ <b>99.7%</b>։</li>
+        </ul>
+        Սրանք օգտագործվում են՝ շեղումներ, արտածին արժեքներ (outliers) և անոմալիաներ գտնելու համար։
+      </p>
+      <p>Վերլուծելիս կարող ես ասել․ «Եթե իմ ազդանշանի նմուշների մեծամասնությունը գտնվում է μ ± 2σ միջակայքում, ուրեմն ազդանշանը բավականին կայուն է, իսկ μ ± 3σ-ից դուրս ընկնող նմուշները կարելի է դիտարկել որպես հնարավոր անոմալիաներ»։</p>
+    </div>
+  </div>
+
+  <script>
+    // --- Utility functions (statistics) ---
+    function computeStats(data) {
+      const n = data.length;
+      const sum = data.reduce((a, b) => a + b, 0);
+      const mean = sum / n;
+
+      let sqSum = 0;
+      let min = data[0];
+      let max = data[0];
+      for (const v of data) {
+        const diff = v - mean;
+        sqSum += diff * diff;
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+      // population std (N-ի բաժանումով)
+      const variance = sqSum / n;
+      const std = Math.sqrt(variance);
+      return { n, mean, std, min, max };
+    }
+
+    function computeSigmaCounts(data, mean, std) {
+      const n = data.length;
+      let c1 = 0, c2 = 0, c3 = 0;
+      for (const v of data) {
+        const dist = Math.abs(v - mean);
+        if (dist <= 1 * std) c1++;
+        if (dist <= 2 * std) c2++;
+        if (dist <= 3 * std) c3++;
+      }
+      return {
+        c1, c2, c3,
+        p1: 100 * c1 / n,
+        p2: 100 * c2 / n,
+        p3: 100 * c3 / n
+      };
+    }
+
+    function buildHistogram(data, binCount = 20) {
+      const { min, max } = computeStats(data);
+      const bins = new Array(binCount).fill(0);
+      const edges = [];
+      const step = (max - min) / binCount || 1;
+      for (let i = 0; i <= binCount; i++) {
+        edges.push(min + i * step);
+      }
+
+      for (const v of data) {
+        let idx = Math.floor((v - min) / step);
+        if (idx < 0) idx = 0;
+        if (idx >= binCount) idx = binCount - 1;
+        bins[idx]++;
+      }
+
+      const labels = [];
+      for (let i = 0; i < binCount; i++) {
+        const a = edges[i];
+        const b = edges[i + 1];
+        labels.push(((a + b) / 2).toFixed(2));
+      }
+      return { labels, bins, min, max };
+    }
+
+    // --- Signal generation: sine + noise ---
+    function generateSignal(N, noiseSigma) {
+      const data = [];
+      for (let i = 0; i < N; i++) {
+        const t = i / N * 4 * Math.PI; // մի քանի պարբերություն
+        const base = Math.sin(t) + 0.5 * Math.sin(3 * t);
+        // approx Gaussian noise (Box-Muller)
+        const u1 = Math.random();
+        const u2 = Math.random();
+        const R = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        const noise = noiseSigma * R;
+        data.push(base + noise);
+      }
+      return data;
+    }
+
+    // --- Chart.js stuff ---
+    let signalChart = null;
+    let histChart = null;
+
+    function updateSignalChart(ctx, data, mean, std) {
+      const labels = data.map((_, i) => i);
+
+      const meanLine = new Array(data.length).fill(mean);
+      const plusSigma = new Array(data.length).fill(mean + std);
+      const minusSigma = new Array(data.length).fill(mean - std);
+
+      if (signalChart) {
+        signalChart.destroy();
+      }
+
+      signalChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Signal',
+              data,
+              fill: false,
+              borderWidth: 1.5,
+              tension: 0,
+            },
+            {
+              label: 'μ (mean)',
+              data: meanLine,
+              borderWidth: 1,
+              borderDash: [5, 5],
+              pointRadius: 0,
+            },
+            {
+              label: 'μ + σ',
+              data: plusSigma,
+              borderWidth: 1,
+              borderDash: [4, 4],
+              pointRadius: 0,
+            },
+            {
+              label: 'μ - σ',
+              data: minusSigma,
+              borderWidth: 1,
+              borderDash: [4, 4],
+              pointRadius: 0,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true, position: 'bottom' },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Index (time samples)' } },
+            y: { title: { display: true, text: 'Amplitude' } }
+          }
+        }
+      });
+    }
+
+    function updateHistChart(ctx, data) {
+      const { labels, bins } = buildHistogram(data, 20);
+
+      if (histChart) {
+        histChart.destroy();
+      }
+
+      histChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Հաճախականություն',
+            data: bins,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { mode: 'index', intersect: false }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Արժեքի միջակայք (մոտավոր)' } },
+            y: { title: { display: true, text: 'Քանակ' } }
+          }
+        }
+      });
+    }
+
+    // --- DOM elements ---
+    const generateBtn = document.getElementById('generateBtn');
+    const sampleCountInput = document.getElementById('sampleCount');
+    const noiseLevelInput = document.getElementById('noiseLevel');
+
+    const meanValue = document.getElementById('meanValue');
+    const stdValue = document.getElementById('stdValue');
+    const minValue = document.getElementById('minValue');
+    const maxValue = document.getElementById('maxValue');
+    const nValue = document.getElementById('nValue');
+
+    const cnt1 = document.getElementById('cnt1');
+    const cnt2 = document.getElementById('cnt2');
+    const cnt3 = document.getElementById('cnt3');
+    const pct1 = document.getElementById('pct1');
+    const pct2 = document.getElementById('pct2');
+    const pct3 = document.getElementById('pct3');
+
+    const signalCtx = document.getElementById('signalChart').getContext('2d');
+    const histCtx = document.getElementById('histChart').getContext('2d');
+
+    function refresh() {
+      const N = Math.max(50, Math.min(2000, parseInt(sampleCountInput.value) || 500));
+      const noiseSigma = parseFloat(noiseLevelInput.value) || 0.5;
+
+      sampleCountInput.value = N;
+      noiseLevelInput.value = noiseSigma.toFixed(1);
+
+      const data = generateSignal(N, noiseSigma);
+      const stats = computeStats(data);
+      const sigmaCounts = computeSigmaCounts(data, stats.mean, stats.std);
+
+      // Update charts
+      updateSignalChart(signalCtx, data, stats.mean, stats.std);
+      updateHistChart(histCtx, data);
+
+      // Update stats text
+      meanValue.textContent = stats.mean.toFixed(3);
+      stdValue.textContent = stats.std.toFixed(3);
+      minValue.textContent = stats.min.toFixed(3);
+      maxValue.textContent = stats.max.toFixed(3);
+      nValue.textContent = stats.n;
+
+      cnt1.textContent = sigmaCounts.c1;
+      cnt2.textContent = sigmaCounts.c2;
+      cnt3.textContent = sigmaCounts.c3;
+      pct1.textContent = sigmaCounts.p1.toFixed(1) + ' %';
+      pct2.textContent = sigmaCounts.p2.toFixed(1) + ' %';
+      pct3.textContent = sigmaCounts.p3.toFixed(1) + ' %';
+    }
+
+    generateBtn.addEventListener('click', refresh);
+    sampleCountInput.addEventListener('change', refresh);
+    noiseLevelInput.addEventListener('change', refresh);
+
+    // Initial run
+    refresh();
+  </script>
+</body>
+</html>
